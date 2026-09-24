@@ -1,5 +1,8 @@
 import React from 'react';
+
 import { X, ShieldAlert, CheckCircle2, AlertOctagon, Download, Sparkles, FileText, ArrowRight } from 'lucide-react';
+import { prepareFinancialAdvice } from "../genai/financialAdvisor";
+
 
 export default function ReportModal({
   isOpen,

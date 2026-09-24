@@ -24,3 +24,13 @@ export function buildEvidenceSummary(finding, transactions = []) {
         transactions: evidence
     };
 }
+export function buildEvidenceFromAnalytics(analytics, transactions = []) {
+    const findings = [
+        ...(analytics?.spendingChanges || []),
+        ...(analytics?.anomalies || [])
+    ];
+
+    return findings.map((finding) =>
+        buildEvidenceSummary(finding, transactions)
+    );
+}
