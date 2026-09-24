@@ -1,0 +1,5 @@
+Date,Merchant,Amount,Type,Category
+2026-09-01,Client Payment,10000,Income,Income
+2026-09-02,Food Shop,500,Expense,Food
+2026-09-03,Office Rent,2000,Expense,Workspace
+2026-09-04,Streaming Service,300,Expense,Subscriptions

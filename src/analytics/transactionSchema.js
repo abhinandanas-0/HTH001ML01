@@ -182,9 +182,9 @@ export function validateTransaction(tx) {
     errors.push(`Transaction "type" must be either "${TRANSACTION_TYPES.INCOME}" or "${TRANSACTION_TYPES.EXPENSE}" (got: "${tx.type}").`);
   }
 
-  // 7. source: "csv" | "bill" | "synthetic"
+  // 7. source: "csv" | "bill" | "synthetic" (optional, defaults to csv if omitted)
   const validSources = Object.values(TRANSACTION_SOURCES);
-  if (!validSources.includes(tx.source)) {
+  if (tx.source !== undefined && !validSources.includes(tx.source)) {
     errors.push(`Transaction "source" must be one of [${validSources.join(', ')}] (got: "${tx.source}").`);
   }
 

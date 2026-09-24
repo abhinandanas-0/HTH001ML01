@@ -10,6 +10,11 @@
  * 6. Recurring-cost detection
  * 7. Spending-change analysis
  * 8. Aggregated Member 2 output contract
+ * 9. Goal tracking
+ * 10. Budget violation detection
+ * 11. Money leak detection
+ * 12. Financial health scoring & metrics
+ * 13. What-if scenario calculations
  */
 
 export {
@@ -61,7 +66,38 @@ export {
 } from './spendingChanges.js';
 
 export {
+  calculateGoalTracking,
+  goalTracking
+} from './goalTracking.js';
+
+export {
+  detectBudgetViolations,
+  budgetViolations,
+  evaluateCategoryBudgets
+} from './budgetViolations.js';
+
+export {
+  detectMoneyLeaks,
+  moneyLeaks
+} from './moneyLeaks.js';
+
+export {
+  calculateFinancialHealth,
+  financialHealth
+} from './financialHealth.js';
+
+export {
+  calculateWhatIf,
+  whatIf,
+  simulateWhatIfScenario
+} from './whatIf.js';
+
+export {
   generateMember2Analytics,
   buildMember2Analytics,
   findPossibleDuplicates
 } from './analyticsOutput.js';
+
+export {
+  runAnalytics
+} from './runAnalytics.js';

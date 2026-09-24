@@ -14,6 +14,11 @@ import { analyzeIrregularIncome } from './irregularIncome.js';
 import { detectSpendingAnomalies } from './anomalyDetection.js';
 import { detectRecurringCosts, normalizeMerchant } from './recurringCosts.js';
 import { analyzeSpendingChanges } from './spendingChanges.js';
+import { calculateGoalTracking } from './goalTracking.js';
+import { detectBudgetViolations } from './budgetViolations.js';
+import { detectMoneyLeaks } from './moneyLeaks.js';
+import { calculateFinancialHealth } from './financialHealth.js';
+import { simulateWhatIfScenario } from './whatIf.js';
 
 /**
  * Identifies potential duplicate transactions sharing the same date, normalized merchant,
@@ -84,6 +89,11 @@ export function findPossibleDuplicates(transactions) {
  *   },
  *   anomalies: [],
  *   recurringCharges: [],
+ *   goalTracking: {},
+ *   budgetViolations: [],
+ *   moneyLeaks: [],
+ *   financialHealth: {},
+ *   whatIf: {},
  *   dataQuality: {
  *     totalTransactions: 0,
  *     validTransactions: 0,
@@ -139,6 +149,7 @@ export function generateMember2Analytics(input, options = {}) {
   // 3. Compute Financial Summary
   const currency = options.currency || 'INR';
 
+  let finSummary = null;
   let summary = {
     totalIncome: 0,
     totalExpenses: 0,
@@ -147,7 +158,7 @@ export function generateMember2Analytics(input, options = {}) {
   };
 
   if (validCount > 0) {
-    const finSummary = calculateFinancialSummary(validTransactions);
+    finSummary = calculateFinancialSummary(validTransactions);
     summary = {
       totalIncome: finSummary.totalIncome,
       totalExpenses: finSummary.totalExpenses,
@@ -169,6 +180,7 @@ export function generateMember2Analytics(input, options = {}) {
     medianMonthlyIncome: null,
     minimumMonthlyIncome: null,
     maximumMonthlyIncome: null,
+    coefficientOfVariation: null,
     lowerIncomeMonths: [],
     explanation: 'No transaction data provided for income analysis.'
   };
@@ -182,6 +194,7 @@ export function generateMember2Analytics(input, options = {}) {
       medianMonthlyIncome: incAnalysis.medianMonthlyIncome,
       minimumMonthlyIncome: incAnalysis.minimumMonthlyIncome,
       maximumMonthlyIncome: incAnalysis.maximumMonthlyIncome,
+      coefficientOfVariation: incAnalysis.coefficientOfVariation,
       lowerIncomeMonths: incAnalysis.lowerIncomeMonths || [],
       explanation: incAnalysis.explanation
     };
@@ -200,7 +213,50 @@ export function generateMember2Analytics(input, options = {}) {
     recurringCharges = detectRecurringCosts(validTransactions, options.recurringCostOptions);
   }
 
-  // 8. Assess Data Quality & Warnings
+  // 8. Compute Goal Tracking
+  const goalTracking = calculateGoalTracking(
+    validTransactions,
+    options.goalConfig ?? options.goal ?? null,
+    options.goalOptions
+  );
+
+  // 9. Compute Budget Violations
+  const budgetViolations = (validCount > 0 && options.budgetConfig)
+    ? detectBudgetViolations(validTransactions, options.budgetConfig, options.budgetOptions)
+    : [];
+
+  // 10. Compute Potential Money Leaks
+  const moneyLeaks = validCount > 0
+    ? detectMoneyLeaks(validTransactions, {
+      recurringCharges,
+      spendingChanges,
+      budgetViolations,
+      anomalies
+    }, options.leakOptions)
+    : [];
+
+  // 11. Compute Financial Health Score and Metrics
+  const financialHealth = calculateFinancialHealth(validTransactions, {
+    summary,
+    irregularIncome,
+    anomalies,
+    recurringCharges,
+    budgetViolations,
+    moneyLeaks
+  });
+
+  // 12. Compute What-If Projections (if scenario provided)
+  const whatIfScenarioInput = options.whatIf || options.scenario;
+  const whatIf = whatIfScenarioInput
+    ? simulateWhatIfScenario(whatIfScenarioInput, {
+      netCashFlow: summary.netCashFlow,
+      totalIncome: summary.totalIncome,
+      totalExpenses: summary.totalExpenses,
+      categoryTotals: finSummary ? finSummary.categoryTotals : {}
+    })
+    : {};
+
+  // 13. Assess Data Quality & Warnings
   const possibleDuplicates = findPossibleDuplicates(validTransactions);
   const warnings = [];
 
@@ -238,13 +294,18 @@ export function generateMember2Analytics(input, options = {}) {
     warnings
   };
 
-  // 9. Return the structured Member 2 output contract
+  // 14. Return the structured Member 2 output contract
   return {
     summary,
     spendingChanges,
     irregularIncome,
     anomalies,
     recurringCharges,
+    goalTracking,
+    budgetViolations,
+    moneyLeaks,
+    financialHealth,
+    whatIf,
     dataQuality
   };
 }
