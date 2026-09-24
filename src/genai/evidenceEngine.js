@@ -19,6 +19,7 @@ export function buildEvidenceSummary(finding, transactions = []) {
     return {
         findingId: finding?.id || null,
         findingType: finding?.type || 'unknown',
+        finding,
         evidenceCount: evidence.length,
         transactionIds: evidence.map((transaction) => transaction.id),
         transactions: evidence
