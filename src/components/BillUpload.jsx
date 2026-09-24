@@ -1,12 +1,11 @@
 import React, { useRef, useState } from 'react';
-import { Receipt, Upload, Trash2, FileText, Image as ImageIcon, CheckCircle2, Plus, ArrowUpRight } from 'lucide-react';
+import { Receipt, Upload, Trash2, FileText, Image as ImageIcon, CheckCircle2, Plus } from 'lucide-react';
 
 export default function BillUpload({
   bills,
   onAddBills,
   onRemoveBill,
-  onClearBills,
-  onLoadSampleBills
+  onClearBills
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const inputRef = useRef(null);
@@ -44,7 +43,7 @@ export default function BillUpload({
       const isAccepted = validExtensions.some(ext => fileName.endsWith(ext));
 
       if (isAccepted) {
-        const isImage = file.type.startsWith('image/');
+        const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp)$/i.test(fileName);
         const previewUrl = isImage ? URL.createObjectURL(file) : null;
 
         newItems.push({
@@ -53,8 +52,8 @@ export default function BillUpload({
           size: (file.size / 1024).toFixed(1) + ' KB',
           type: isImage ? 'image' : 'pdf',
           previewUrl,
-          vendor: 'Uploaded Document',
-          status: 'Ready for OCR Verification'
+          rawFile: file,
+          status: 'Staged Document'
         });
       }
     });
@@ -132,7 +131,7 @@ export default function BillUpload({
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
                 type="button"
-                className="btn-sample-link"
+                className="btn-inline-link"
                 onClick={() => inputRef.current?.click()}
               >
                 <Plus size={13} />
@@ -140,7 +139,7 @@ export default function BillUpload({
               </button>
               <button
                 type="button"
-                className="btn-sample-link"
+                className="btn-inline-link"
                 style={{ color: 'var(--rose-400)' }}
                 onClick={onClearBills}
               >
@@ -170,17 +169,9 @@ export default function BillUpload({
                     <div className="bill-meta">
                       <span>{bill.size}</span>
                       <span>•</span>
-                      <span style={{ color: bill.vendor ? '#c084fc' : 'var(--text-muted)' }}>
-                        {bill.vendor || bill.type.toUpperCase()}
+                      <span style={{ color: 'var(--text-muted)' }}>
+                        {bill.type ? bill.type.toUpperCase() : 'DOCUMENT'}
                       </span>
-                      {bill.amount && (
-                        <>
-                          <span>•</span>
-                          <span style={{ color: 'var(--emerald-400)', fontWeight: 600 }}>
-                            ${bill.amount.toFixed(2)}
-                          </span>
-                        </>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -202,19 +193,12 @@ export default function BillUpload({
       )}
 
       <div className="card-bottom-actions">
-        {bills.length === 0 ? (
-          <button
-            type="button"
-            className="btn-sample-link"
-            onClick={onLoadSampleBills}
-          >
-            <span>Load Sample Invoices (4 items: utility, cloud, saas...)</span>
-            <ArrowUpRight size={13} />
-          </button>
-        ) : (
+        {bills.length > 0 ? (
           <span style={{ fontSize: '0.74rem', color: 'var(--emerald-400)' }}>
             ✓ Ready to match against bank outflows
           </span>
+        ) : (
+          <span />
         )}
 
         <span className="card-skip-hint">

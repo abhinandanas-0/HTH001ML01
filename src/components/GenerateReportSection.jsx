@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
-import { Sparkles, Scan, FileSearch, ArrowRight } from 'lucide-react';
+import { Sparkles, Scan, ArrowRight, AlertTriangle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export default function GenerateReportSection({
   hasCsv,
-  billCount,
-  profile,
+  hasValidTransactions,
+  billCount = 0,
+  profile = {},
+  externalError = null,
   onGenerateReport
 }) {
   const [isScanning, setIsScanning] = useState(false);
   const [scanStep, setScanStep] = useState(0);
+  const [validationError, setValidationError] = useState(null);
 
   const scanStages = [
     'Parsing ledger transaction records & timestamps...',
@@ -18,7 +21,29 @@ export default function GenerateReportSection({
     'Compiling evidence-based forensic dossier...'
   ];
 
+  const isProfileFilled = Boolean(
+    (profile?.monthlyIncome && String(profile.monthlyIncome).trim() !== '') ||
+    (profile?.irregularIncome && String(profile.irregularIncome).trim() !== '') ||
+    (profile?.savingsGoal && String(profile.savingsGoal).trim() !== '')
+  );
+
+  const hasValidLedger = hasValidTransactions !== undefined
+    ? Boolean(hasValidTransactions)
+    : Boolean(hasCsv);
+  const hasBills = billCount > 0;
+
+  const hasAnyInput = Boolean(hasValidLedger || hasBills || isProfileFilled);
+
+  // Derived error: clears automatically when an input is added, avoiding setState inside effects
+  const displayError = hasAnyInput ? null : (validationError || externalError);
+
   const handleTriggerAnalysis = () => {
+    if (!hasAnyInput) {
+      setValidationError('Please provide at least one financial input before generating your analysis.');
+      return;
+    }
+
+    setValidationError(null);
     setIsScanning(true);
     setScanStep(0);
 
@@ -31,7 +56,6 @@ export default function GenerateReportSection({
           clearInterval(interval);
           setTimeout(() => {
             setIsScanning(false);
-            // Trigger confetti for report generation completion!
             try {
               confetti({
                 particleCount: 60,
@@ -39,8 +63,8 @@ export default function GenerateReportSection({
                 origin: { y: 0.6 },
                 colors: ['#a855f7', '#6366f1', '#38bdf8', '#34d399']
               });
-            } catch (err) {
-              // fallback gracefully if confetti not loaded
+            } catch {
+              // fallback gracefully if confetti not available
             }
             onGenerateReport();
           }, 600);
@@ -51,13 +75,21 @@ export default function GenerateReportSection({
   };
 
   // Human-readable evidence summary
-  let evidenceSummary = 'Baseline Estimation';
-  if (hasCsv && billCount > 0) {
+  let evidenceSummary = 'No Inputs Staged';
+  if (hasValidLedger && hasBills && isProfileFilled) {
+    evidenceSummary = `1 Ledger File + ${billCount} Docs + Profile Attached`;
+  } else if (hasValidLedger && hasBills) {
     evidenceSummary = `1 Ledger File + ${billCount} Document Proofs Attached`;
-  } else if (hasCsv) {
+  } else if (hasValidLedger && isProfileFilled) {
+    evidenceSummary = '1 Ledger File + Baseline Profile Attached';
+  } else if (hasValidLedger) {
     evidenceSummary = '1 Ledger File (Bills Skipped)';
-  } else if (billCount > 0) {
+  } else if (hasBills && isProfileFilled) {
+    evidenceSummary = `${billCount} Document Proofs + Profile Attached`;
+  } else if (hasBills) {
     evidenceSummary = `${billCount} Document Invoices (Ledger Skipped)`;
+  } else if (isProfileFilled) {
+    evidenceSummary = 'Income & Savings Baseline Profile Only';
   }
 
   return (
@@ -73,6 +105,26 @@ export default function GenerateReportSection({
           <span>Generate Expenditure Report</span>
           <ArrowRight size={20} />
         </button>
+
+        {displayError && (
+          <div
+            style={{
+              marginTop: '12px',
+              padding: '10px 16px',
+              borderRadius: 'var(--radius-sm)',
+              background: 'rgba(244, 63, 94, 0.15)',
+              border: '1px solid rgba(244, 63, 94, 0.35)',
+              color: '#fda4af',
+              fontSize: '0.84rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <AlertTriangle size={16} />
+            <span>{displayError}</span>
+          </div>
+        )}
 
         <div className="action-status-note">
           <span className="status-badge-live" />

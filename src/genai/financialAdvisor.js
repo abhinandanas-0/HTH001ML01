@@ -18,20 +18,26 @@ function generateRecommendation(evidenceItem) {
         const curr = finding.currentPeriodAmount;
         const fromTo = (prev !== undefined && curr !== undefined) ? ` from ${prev} to ${curr}` : '';
 
-        explanation = `${category} spending ${direction} by ${absAmount} (${absPercentage}%)${fromTo}, supported by transaction(s) ${transactionIds.join(', ')}.`;
-        recommendation = `Review recent ${category} transactions (${transactionIds.join(', ')}) to assess whether this ${direction} aligns with your budget or if adjustments are warranted.`;
+        const txSupport = transactionIds.length > 0 ? `, supported by transaction(s) ${transactionIds.join(', ')}` : '';
+        const recTx = transactionIds.length > 0 ? ` (${transactionIds.join(', ')})` : '';
+
+        explanation = `${category} spending ${direction} by ${absAmount} (${absPercentage}%)${fromTo}${txSupport}.`;
+        recommendation = `Review recent ${category} transactions${recTx} to assess whether this ${direction} aligns with your budget or if adjustments are warranted.`;
     } else if (findingType === 'unusual_spending') {
         const category = finding.category || 'this category';
         const amount = finding.amount !== undefined ? `${finding.amount}` : 'an atypical amount';
         const reason = finding.reason ? ` ${finding.reason}` : '';
         const confidence = finding.confidence ? ` (Confidence: ${finding.confidence})` : '';
+        const txRef = transactionIds.length > 0 ? ` for transaction(s) ${transactionIds.join(', ')}` : '';
+        const txRec = transactionIds.length > 0 ? ` ${transactionIds.join(', ')}` : '';
 
-        explanation = `Unusual transaction of ${amount} detected in ${category} for transaction(s) ${transactionIds.join(', ')}.${reason}${confidence}`;
-        recommendation = `Verify transaction ${transactionIds.join(', ')} against your merchant receipts to confirm validity and ensure no unauthorized charges occurred.`;
+        explanation = `Unusual transaction of ${amount} detected in ${category}${txRef}.${reason}${confidence}`;
+        recommendation = `Verify transaction${txRec} against your merchant receipts to confirm validity and ensure no unauthorized charges occurred.`;
     } else {
         const category = finding.category ? ` in ${finding.category}` : '';
-        explanation = `Finding ${findingId} (${findingType})${category} flagged with supporting transaction(s): ${transactionIds.join(', ')}.`;
-        recommendation = `Review supporting transaction(s) ${transactionIds.join(', ')} for accuracy and budget alignment.`;
+        const txRef = transactionIds.length > 0 ? `: ${transactionIds.join(', ')}` : '';
+        explanation = `Finding ${findingId || 'detected'} (${findingType})${category} flagged with supporting transaction(s)${txRef}.`;
+        recommendation = `Review supporting transaction(s)${txRef} for accuracy and budget alignment.`;
     }
 
     return {
@@ -43,6 +49,14 @@ function generateRecommendation(evidenceItem) {
 }
 
 export function prepareFinancialAdvice(analytics, transactions = []) {
+    if (!analytics || analytics.status === 'no_input') {
+        return {
+            evidence: [],
+            prompts: [],
+            recommendations: []
+        };
+    }
+
     const evidence = buildEvidenceFromAnalytics(
         analytics,
         transactions

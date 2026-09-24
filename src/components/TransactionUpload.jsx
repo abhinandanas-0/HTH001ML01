@@ -1,12 +1,12 @@
 import React, { useRef, useState } from 'react';
-import { FileSpreadsheet, Upload, Trash2, Eye, CheckCircle2, FileCheck, ArrowUpRight } from 'lucide-react';
+import { FileSpreadsheet, Upload, Trash2, Eye, CheckCircle2, FileCheck } from 'lucide-react';
+import { parseCSV } from '../analytics/index.js';
 
 export default function TransactionUpload({
   file,
   onFileChange,
   onRemove,
-  onOpenPreview,
-  onLoadSample
+  onOpenPreview
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const inputRef = useRef(null);
@@ -36,7 +36,7 @@ export default function TransactionUpload({
     }
   };
 
-  const processFile = (selectedFile) => {
+  const processFile = async (selectedFile) => {
     const validExtensions = ['.csv', '.xlsx', '.xls'];
     const fileName = selectedFile.name.toLowerCase();
     const isValid = validExtensions.some(ext => fileName.endsWith(ext));
@@ -46,18 +46,39 @@ export default function TransactionUpload({
       return;
     }
 
+    let parsedTransactions = [];
+    let parserErrors = [];
+    let parserSummary = { totalRows: 0, validRows: 0, invalidRows: 0 };
+
+    if (fileName.endsWith('.csv') || selectedFile.type === 'text/csv' || selectedFile.type === 'text/plain') {
+      try {
+        const text = await selectedFile.text();
+        const parseResult = parseCSV(text);
+        parsedTransactions = parseResult.transactions || [];
+        parserErrors = parseResult.errors || [];
+        parserSummary = parseResult.summary || {
+          totalRows: parsedTransactions.length,
+          validRows: parsedTransactions.length,
+          invalidRows: 0
+        };
+      } catch (err) {
+        console.warn('Failed to parse CSV text:', err);
+        parserErrors.push({ row: 0, raw: '', errors: [err.message || 'Failed to read CSV text'] });
+      }
+    }
+
     onFileChange({
       name: selectedFile.name,
       size: (selectedFile.size / 1024).toFixed(1) + ' KB',
       rawFile: selectedFile,
-      recordsCount: 8, // mock estimate
+      recordsCount: parsedTransactions.length,
+      totalRows: parserSummary.totalRows,
+      invalidRows: parserSummary.invalidRows,
+      transactions: parsedTransactions,
+      errors: parserErrors,
+      summary: parserSummary,
       uploadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     });
-  };
-
-  const formatFileSize = (bytes) => {
-    if (typeof bytes === 'string') return bytes;
-    return (bytes / 1024).toFixed(1) + ' KB';
   };
 
   return (
@@ -75,9 +96,22 @@ export default function TransactionUpload({
 
         <div>
           {file ? (
-            <span className="card-status-pill attached">
-              <CheckCircle2 size={13} /> Linked
-            </span>
+            file.recordsCount > 0 ? (
+              <span className="card-status-pill attached">
+                <CheckCircle2 size={13} /> Linked
+              </span>
+            ) : (
+              <span
+                className="card-status-pill"
+                style={{
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  color: '#f87171',
+                  border: '1px solid rgba(239, 68, 68, 0.3)'
+                }}
+              >
+                ⚠️ Invalid CSV
+              </span>
+            )
           ) : (
             <span className="card-status-pill optional">
               Optional / Can skip
@@ -130,7 +164,17 @@ export default function TransactionUpload({
                 <div className="file-details">
                   <span>{file.size}</span>
                   <span>•</span>
-                  <span style={{ color: '#38bdf8' }}>~{file.recordsCount || 8} entries ready</span>
+                  <span style={{ color: file.recordsCount > 0 ? '#38bdf8' : 'var(--rose-400)' }}>
+                    {file.recordsCount > 0 ? `${file.recordsCount} entries parsed` : '0 valid entries parsed'}
+                  </span>
+                  {file.invalidRows > 0 && (
+                    <>
+                      <span>•</span>
+                      <span style={{ color: 'var(--amber-400)' }}>
+                        {file.invalidRows} invalid row{file.invalidRows > 1 ? 's' : ''}
+                      </span>
+                    </>
+                  )}
                   <span>•</span>
                   <span>Uploaded {file.uploadedAt || 'just now'}</span>
                 </div>
@@ -160,28 +204,23 @@ export default function TransactionUpload({
       )}
 
       <div className="card-bottom-actions">
-        {!file ? (
+        {file ? (
           <button
             type="button"
-            className="btn-sample-link"
-            onClick={onLoadSample}
-          >
-            <span>Load Sample Statement (statement_sep2026.csv)</span>
-            <ArrowUpRight size={13} />
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="btn-sample-link"
+            className="btn-inline-link"
             onClick={onOpenPreview}
           >
             <Eye size={13} />
             <span>Inspect Extracted Ledger Rows</span>
           </button>
+        ) : (
+          <span />
         )}
 
         <span className="card-skip-hint">
-          {file ? 'Statement ready for analysis' : 'Either CSV or Bills can be skipped'}
+          {file
+            ? (file.recordsCount > 0 ? 'Statement ready for analysis' : 'No valid transactions found in file')
+            : 'Either CSV or Bills can be skipped'}
         </span>
       </div>
     </div>
