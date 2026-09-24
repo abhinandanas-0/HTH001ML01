@@ -1,7 +1,7 @@
 import React from 'react';
-import { ShieldCheck, Sparkles, RotateCcw, Database } from 'lucide-react';
+import { ShieldCheck, RotateCcw } from 'lucide-react';
 
-export default function Navbar({ onReset, onLoadSample }) {
+export default function Navbar({ onReset }) {
   return (
     <header className="navbar">
       <div className="brand-section">
@@ -28,16 +28,6 @@ export default function Navbar({ onReset, onLoadSample }) {
         >
           <RotateCcw size={15} />
           <span>Reset Form</span>
-        </button>
-
-        <button
-          type="button"
-          className="nav-btn-demo"
-          onClick={onLoadSample}
-          title="Pre-populate with sample evidence"
-        >
-          <Database size={15} />
-          <span>Try Sample Data</span>
         </button>
       </div>
     </header>

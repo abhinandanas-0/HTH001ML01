@@ -1,11 +1,11 @@
 import React from 'react';
-import { X, ShieldAlert, CheckCircle2, AlertOctagon, Download, Sparkles, FileText, ArrowRight } from 'lucide-react';
+import { X, ShieldAlert, CheckCircle2, Download, Sparkles } from 'lucide-react';
 
 export default function ReportModal({
   isOpen,
   onClose,
-  hasCsv,
-  billCount,
+  transactions = [],
+  bills = [],
   profile,
   currencySymbol = '$'
 }) {
@@ -16,32 +16,34 @@ export default function ReportModal({
   const totalIncome = monthlyStable + irregular;
   const savingsTarget = parseFloat(profile.savingsGoal) || 0;
 
-  // Mock computed forensic stats
-  const totalOutflow = 1212.54;
-  const verifiedWithInvoices = billCount > 0 ? 732.05 : 0;
-  const unverifiedTransactions = totalOutflow - verifiedWithInvoices;
-  const ghostLeakAmount = 29.99; // SyncPro + SubStream variance
-  const estimatedSurplus = totalIncome > 0 ? (totalIncome - totalOutflow) : null;
-  const savingsAttained = estimatedSurplus !== null && savingsTarget > 0 ? (estimatedSurplus >= savingsTarget) : null;
+  // Real computed stats from actual user inputs
+  const totalOutflow = Array.isArray(transactions)
+    ? transactions.reduce((sum, tx) => sum + (parseFloat(tx.amount) || 0), 0)
+    : 0;
+  const billCount = Array.isArray(bills) ? bills.length : 0;
+  const hasTransactions = transactions.length > 0;
+  const surplus = totalIncome > 0 || totalOutflow > 0 ? (totalIncome - totalOutflow) : null;
+  const savingsAttained = surplus !== null && savingsTarget > 0 ? (surplus >= savingsTarget) : null;
 
   const handleExportJSON = () => {
+    const exportTime = new Date().toISOString().replace(/[:.]/g, '-');
     const reportData = {
       reportTitle: "GA-08 Evidence-Based Financial Detective Dossier",
       generatedAt: new Date().toISOString(),
       currency: currencySymbol,
-      evidenceSummary: {
-        bankLedgerAttached: hasCsv,
-        invoicesAttachedCount: billCount,
-        totalAnalyzedOutflow: totalOutflow,
-        verifiedWithEvidence: verifiedWithInvoices,
-        unverifiedOutflow: unverifiedTransactions,
-        flaggedGhostSubscriptions: ["SubStream Plus ($19.99/mo)", "SyncPro Variance (+$10.00)"]
+      userEvidenceSummary: {
+        transactionsCount: transactions.length,
+        totalOutflow: totalOutflow,
+        billsCount: billCount,
+        uploadedBillFiles: bills.map(b => ({ name: b.name, size: b.size, type: b.type })),
+        transactions: transactions
       },
-      baseline: {
-        totalIncome,
-        savingsTarget,
-        estimatedSurplus,
-        savingsFeasibility: savingsAttained
+      financialBaseline: {
+        monthlyIncome: monthlyStable,
+        irregularIncome: irregular,
+        totalIncome: totalIncome,
+        savingsTarget: savingsTarget,
+        operatingBalance: surplus
       }
     };
 
@@ -49,7 +51,7 @@ export default function ReportModal({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `financial_detective_dossier_${Date.now()}.json`;
+    a.download = `financial_detective_dossier_${exportTime}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -64,7 +66,7 @@ export default function ReportModal({
             <div>
               <span>Expenditure Investigation Dossier</span>
               <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 400 }}>
-                Forensic cross-examination of bank ledgers vs. physical billing proof
+                Forensic expenditure reconciliation based strictly on user-provided evidence
               </div>
             </div>
           </div>
@@ -79,7 +81,7 @@ export default function ReportModal({
           </button>
         </div>
 
-        {/* Forensic Metrics 4-Card Grid */}
+        {/* Real Metrics Grid */}
         <div className="report-metrics-grid">
           <div className="metric-card">
             <div className="metric-label">Analyzed Outflow</div>
@@ -87,44 +89,52 @@ export default function ReportModal({
               {currencySymbol}{totalOutflow.toFixed(2)}
             </div>
             <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '4px' }}>
-              {hasCsv ? 'Extracted from statement' : 'Estimated from bills'}
+              {hasTransactions ? `${transactions.length} user records parsed` : 'No statement uploaded'}
             </div>
           </div>
 
           <div className="metric-card accent-emerald">
-            <div className="metric-label">Verified by Proof</div>
+            <div className="metric-label">Attached Proofs</div>
             <div className="metric-value" style={{ color: 'var(--emerald-400)' }}>
-              {currencySymbol}{verifiedWithInvoices.toFixed(2)}
+              {billCount} {billCount === 1 ? 'Doc' : 'Docs'}
             </div>
             <div style={{ fontSize: '0.72rem', color: 'var(--emerald-400)', marginTop: '4px' }}>
-              {billCount > 0 ? `${billCount} bills cross-matched` : '0 bills attached (Skipped)'}
-            </div>
-          </div>
-
-          <div className="metric-card accent-amber">
-            <div className="metric-label">Discrepancies & Ghosts</div>
-            <div className="metric-value" style={{ color: 'var(--amber-400)' }}>
-              2 Flags
-            </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--amber-400)', marginTop: '4px' }}>
-              ~{currencySymbol}{ghostLeakAmount}/mo potential leak
+              {billCount > 0 ? `${billCount} user documents attached` : '0 bills attached (Skipped)'}
             </div>
           </div>
 
           <div className="metric-card accent-purple">
+            <div className="metric-label">Evidence Depth</div>
+            <div className="metric-value" style={{ color: 'var(--purple-400)', fontSize: '1.15rem' }}>
+              {hasTransactions && billCount > 0
+                ? 'Dual Evidence'
+                : hasTransactions
+                ? 'Ledger Only'
+                : billCount > 0
+                ? 'Bills Only'
+                : 'Baseline Only'}
+            </div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--purple-400)', marginTop: '4px' }}>
+              {hasTransactions && billCount > 0
+                ? 'Cross-source available'
+                : 'Single input mode'}
+            </div>
+          </div>
+
+          <div className="metric-card accent-amber">
             <div className="metric-label">
               {savingsTarget > 0 ? 'Savings Goal Gap' : 'Est. Monthly Surplus'}
             </div>
-            <div className="metric-value" style={{ color: 'var(--purple-400)' }}>
+            <div className="metric-value" style={{ color: 'var(--amber-400)' }}>
               {totalIncome > 0 ? (
-                `${currencySymbol}${Math.abs((totalIncome - totalOutflow) - savingsTarget).toFixed(0)}`
+                `${currencySymbol}${Math.abs((totalIncome - totalOutflow) - savingsTarget).toFixed(2)}`
               ) : (
                 'Pending Income'
               )}
             </div>
             <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>
               {totalIncome > 0 ? (
-                savingsAttained ? '✓ Target achievable' : '⚠ Buffer under target'
+                savingsAttained ? '✓ Target achievable' : '⚠ Deficit from target'
               ) : (
                 'Add baseline in profile'
               )}
@@ -132,78 +142,113 @@ export default function ReportModal({
           </div>
         </div>
 
-        {/* Forensic Discrepancy Findings Section */}
+        {/* Evidence Findings Section: Real User Data */}
         <div style={{ marginBottom: '24px' }}>
           <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ShieldAlert size={18} style={{ color: 'var(--amber-400)' }} />
-            <span>Forensic Evidence Findings & Variance Reconciliation</span>
+            <ShieldAlert size={18} style={{ color: 'var(--purple-400)' }} />
+            <span>Forensic Evidence Findings & Itemized Records</span>
           </h3>
 
-          <div className="table-responsive">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Vendor / Subject</th>
-                  <th>Statement Outflow</th>
-                  <th>Invoice Proof</th>
-                  <th>Variance</th>
-                  <th>Detective Verdict</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style={{ fontWeight: 600, color: '#fff' }}>Metropolitan Grid Utility</td>
-                  <td className="font-mono">{currencySymbol}178.20</td>
-                  <td className="font-mono">{currencySymbol}178.20</td>
-                  <td style={{ color: 'var(--emerald-400)' }}>$0.00</td>
-                  <td>
-                    <span style={{ color: 'var(--emerald-400)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <CheckCircle2 size={13} /> 100% Exact Receipt Match
-                    </span>
-                  </td>
-                </tr>
-
-                <tr>
-                  <td style={{ fontWeight: 600, color: '#fff' }}>Apex Cloud Hosting</td>
-                  <td className="font-mono">{currencySymbol}89.00</td>
-                  <td className="font-mono">{currencySymbol}89.00</td>
-                  <td style={{ color: 'var(--emerald-400)' }}>$0.00</td>
-                  <td>
-                    <span style={{ color: 'var(--emerald-400)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <CheckCircle2 size={13} /> Verified against PDF #ACH-9942
-                    </span>
-                  </td>
-                </tr>
-
-                <tr style={{ background: 'rgba(251, 113, 133, 0.08)' }}>
-                  <td style={{ fontWeight: 600, color: '#fff' }}>SyncPro SaaS</td>
-                  <td className="font-mono" style={{ color: 'var(--rose-400)' }}>{currencySymbol}49.00</td>
-                  <td className="font-mono">{currencySymbol}39.00</td>
-                  <td style={{ color: 'var(--rose-400)', fontWeight: 700 }}>+{currencySymbol}10.00</td>
-                  <td>
-                    <span style={{ color: 'var(--rose-400)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <AlertOctagon size={13} /> Unverified Price Hike (Invoice was $39)
-                    </span>
-                  </td>
-                </tr>
-
-                <tr style={{ background: 'rgba(251, 191, 36, 0.08)' }}>
-                  <td style={{ fontWeight: 600, color: '#fff' }}>SubStream Plus Premium</td>
-                  <td className="font-mono" style={{ color: 'var(--amber-400)' }}>{currencySymbol}19.99</td>
-                  <td style={{ color: 'var(--text-dim)' }}>Missing</td>
-                  <td style={{ color: 'var(--amber-400)' }}>N/A</td>
-                  <td>
-                    <span style={{ color: 'var(--amber-400)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <AlertOctagon size={13} /> Ghost Subscription (Zero login past 60d)
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          {hasTransactions ? (
+            <div className="table-responsive">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Merchant / Description</th>
+                    <th>Category</th>
+                    <th style={{ textAlign: 'right' }}>Outflow</th>
+                    <th>Evidence State</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transactions.map((tx, idx) => (
+                    <tr key={tx.id || idx}>
+                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-dim)' }}>
+                        {tx.date || 'N/A'}
+                      </td>
+                      <td style={{ fontWeight: 600, color: '#fff' }}>
+                        {tx.merchant || 'Unlabeled Transaction'}
+                      </td>
+                      <td>
+                        <span
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            background: 'rgba(255, 255, 255, 0.06)',
+                            fontSize: '0.75rem',
+                            color: 'var(--text-muted)'
+                          }}
+                        >
+                          {tx.category || 'General'}
+                        </span>
+                      </td>
+                      <td className="font-mono" style={{ textAlign: 'right', fontWeight: 600 }}>
+                        -{currencySymbol}{Number(tx.amount || 0).toFixed(2)}
+                      </td>
+                      <td>
+                        {billCount > 0 ? (
+                          <span style={{ color: 'var(--cyan-400)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <CheckCircle2 size={13} /> Linked to Staged Proofs
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--text-dim)', fontSize: '0.78rem' }}>
+                            Statement Only (Bills Skipped)
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : billCount > 0 ? (
+            <div className="table-responsive">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Uploaded Document</th>
+                    <th>Format</th>
+                    <th>File Size</th>
+                    <th>Audit Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bills.map((bill) => (
+                    <tr key={bill.id}>
+                      <td style={{ fontWeight: 600, color: '#fff' }}>{bill.name}</td>
+                      <td style={{ textTransform: 'uppercase', color: 'var(--purple-400)', fontSize: '0.78rem' }}>
+                        {bill.type || 'DOCUMENT'}
+                      </td>
+                      <td className="font-mono" style={{ color: 'var(--text-dim)' }}>{bill.size}</td>
+                      <td>
+                        <span style={{ color: 'var(--emerald-400)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <CheckCircle2 size={13} /> Staged for OCR Analysis
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div
+              style={{
+                padding: '24px',
+                textAlign: 'center',
+                borderRadius: 'var(--radius-md)',
+                background: 'rgba(20, 29, 64, 0.5)',
+                border: '1px dashed rgba(255, 255, 255, 0.1)',
+                color: 'var(--text-muted)',
+                fontSize: '0.85rem'
+              }}
+            >
+              No ledger statements or bill documents have been provided. Report reflects manual profile baseline.
+            </div>
+          )}
         </div>
 
-        {/* Savings & Cashflow Insight */}
+        {/* Real Savings & Cashflow Insight */}
         {totalIncome > 0 && (
           <div
             style={{
@@ -224,8 +269,10 @@ export default function ReportModal({
                 Detective Savings Assessment
               </div>
               <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                Combined Inflow ({currencySymbol}{totalIncome.toFixed(2)}) minus Analyzed Outflows ({currencySymbol}{totalOutflow.toFixed(2)}) leaves an operating surplus of{' '}
-                <strong style={{ color: 'var(--emerald-400)' }}>{currencySymbol}{(totalIncome - totalOutflow).toFixed(2)}</strong>.
+                Combined Inflow ({currencySymbol}{totalIncome.toFixed(2)}) minus Analyzed Outflows ({currencySymbol}{totalOutflow.toFixed(2)}) leaves an operating balance of{' '}
+                <strong style={{ color: surplus >= 0 ? 'var(--emerald-400)' : 'var(--rose-400)' }}>
+                  {currencySymbol}{surplus.toFixed(2)}
+                </strong>.
               </div>
             </div>
 
@@ -241,7 +288,9 @@ export default function ReportModal({
                   color: savingsAttained ? 'var(--emerald-400)' : 'var(--amber-400)'
                 }}
               >
-                {savingsAttained ? '✓ Target Achieved' : '⚠ Gap: ' + currencySymbol + Math.abs((totalIncome - totalOutflow) - savingsTarget).toFixed(0)}
+                {savingsAttained
+                  ? '✓ Target Achieved'
+                  : '⚠ Target Gap: ' + currencySymbol + Math.abs(surplus - savingsTarget).toFixed(2)}
               </div>
             )}
           </div>

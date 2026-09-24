@@ -1,6 +1,6 @@
 import React from 'react';
-import { DollarSign, PiggyBank, Briefcase, TrendingUp, Info } from 'lucide-react';
-import { CURRENCIES } from '../data/mockData';
+import { PiggyBank, TrendingUp } from 'lucide-react';
+import { CURRENCIES } from '../data/currencies';
 
 export default function FinancialProfile({
   profile,

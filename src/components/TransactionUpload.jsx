@@ -1,12 +1,11 @@
 import React, { useRef, useState } from 'react';
-import { FileSpreadsheet, Upload, Trash2, Eye, CheckCircle2, FileCheck, ArrowUpRight } from 'lucide-react';
+import { FileSpreadsheet, Upload, Trash2, Eye, CheckCircle2, FileCheck } from 'lucide-react';
 
 export default function TransactionUpload({
   file,
   onFileChange,
   onRemove,
-  onOpenPreview,
-  onLoadSample
+  onOpenPreview
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const inputRef = useRef(null);
@@ -36,7 +35,60 @@ export default function TransactionUpload({
     }
   };
 
-  const processFile = (selectedFile) => {
+  const parseCSV = (csvText) => {
+    const lines = csvText.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+    if (lines.length === 0) return [];
+
+    const parseLine = (line) => {
+      const values = [];
+      let current = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          values.push(current.trim().replace(/^"|"$/g, ''));
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      values.push(current.trim().replace(/^"|"$/g, ''));
+      return values;
+    };
+
+    const headerValues = parseLine(lines[0]).map(h => h.toLowerCase());
+    
+    let dateIdx = headerValues.findIndex(h => h.includes('date') || h.includes('time'));
+    let merchantIdx = headerValues.findIndex(h => h.includes('merchant') || h.includes('desc') || h.includes('payee') || h.includes('entity') || h.includes('name'));
+    let amountIdx = headerValues.findIndex(h => h.includes('amount') || h.includes('cost') || h.includes('price') || h.includes('total') || h.includes('debit'));
+    let categoryIdx = headerValues.findIndex(h => h.includes('category') || h.includes('type') || h.includes('tag'));
+
+    const hasHeaders = dateIdx !== -1 || merchantIdx !== -1 || amountIdx !== -1;
+    const dataLines = hasHeaders ? lines.slice(1) : lines;
+
+    if (dateIdx === -1) dateIdx = 0;
+    if (merchantIdx === -1) merchantIdx = Math.min(1, headerValues.length - 1);
+    if (amountIdx === -1) amountIdx = Math.min(2, headerValues.length - 1);
+    if (categoryIdx === -1) categoryIdx = Math.min(3, headerValues.length - 1);
+
+    return dataLines.map((line, idx) => {
+      const cols = parseLine(line);
+      const rawAmount = cols[amountIdx] || '0';
+      const cleanAmount = parseFloat(rawAmount.replace(/[^0-9.-]/g, '')) || 0;
+
+      return {
+        id: `tx-${idx + 1}`,
+        date: cols[dateIdx] || 'N/A',
+        merchant: cols[merchantIdx] || 'Unknown Merchant',
+        category: (cols[categoryIdx] && categoryIdx !== amountIdx && categoryIdx !== merchantIdx) ? cols[categoryIdx] : 'General',
+        amount: Math.abs(cleanAmount)
+      };
+    }).filter(tx => tx.merchant !== 'Unknown Merchant' || tx.amount > 0);
+  };
+
+  const processFile = async (selectedFile) => {
     const validExtensions = ['.csv', '.xlsx', '.xls'];
     const fileName = selectedFile.name.toLowerCase();
     const isValid = validExtensions.some(ext => fileName.endsWith(ext));
@@ -46,18 +98,24 @@ export default function TransactionUpload({
       return;
     }
 
+    let parsedTransactions = [];
+    if (fileName.endsWith('.csv') || selectedFile.type === 'text/csv' || selectedFile.type === 'text/plain') {
+      try {
+        const text = await selectedFile.text();
+        parsedTransactions = parseCSV(text);
+      } catch (err) {
+        console.warn('Failed to parse CSV text:', err);
+      }
+    }
+
     onFileChange({
       name: selectedFile.name,
       size: (selectedFile.size / 1024).toFixed(1) + ' KB',
       rawFile: selectedFile,
-      recordsCount: 8, // mock estimate
+      recordsCount: parsedTransactions.length,
+      transactions: parsedTransactions,
       uploadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     });
-  };
-
-  const formatFileSize = (bytes) => {
-    if (typeof bytes === 'string') return bytes;
-    return (bytes / 1024).toFixed(1) + ' KB';
   };
 
   return (
@@ -130,7 +188,9 @@ export default function TransactionUpload({
                 <div className="file-details">
                   <span>{file.size}</span>
                   <span>•</span>
-                  <span style={{ color: '#38bdf8' }}>~{file.recordsCount || 8} entries ready</span>
+                  <span style={{ color: '#38bdf8' }}>
+                    {file.recordsCount > 0 ? `${file.recordsCount} entries parsed` : 'File staged'}
+                  </span>
                   <span>•</span>
                   <span>Uploaded {file.uploadedAt || 'just now'}</span>
                 </div>
@@ -160,24 +220,17 @@ export default function TransactionUpload({
       )}
 
       <div className="card-bottom-actions">
-        {!file ? (
+        {file ? (
           <button
             type="button"
-            className="btn-sample-link"
-            onClick={onLoadSample}
-          >
-            <span>Load Sample Statement (statement_sep2026.csv)</span>
-            <ArrowUpRight size={13} />
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="btn-sample-link"
+            className="btn-inline-link"
             onClick={onOpenPreview}
           >
             <Eye size={13} />
             <span>Inspect Extracted Ledger Rows</span>
           </button>
+        ) : (
+          <span />
         )}
 
         <span className="card-skip-hint">

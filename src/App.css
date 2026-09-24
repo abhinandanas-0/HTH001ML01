@@ -466,7 +466,7 @@
   border-color: var(--purple-400);
 }
 
-/* Sample Quick Actions underneath dropzones */
+/* Inline actions underneath dropzones and cards */
 .card-bottom-actions {
   margin-top: 14px;
   display: flex;
@@ -474,7 +474,7 @@
   align-items: center;
 }
 
-.btn-sample-link {
+.btn-inline-link {
   background: none;
   border: none;
   color: var(--purple-400);
@@ -489,7 +489,7 @@
   transition: color var(--transition-fast);
 }
 
-.btn-sample-link:hover {
+.btn-inline-link:hover {
   color: #fff;
   text-decoration: underline;
 }

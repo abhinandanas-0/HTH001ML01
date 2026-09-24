@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { Sparkles, Scan, FileSearch, ArrowRight } from 'lucide-react';
+import { Sparkles, Scan, ArrowRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export default function GenerateReportSection({
   hasCsv,
   billCount,
-  profile,
   onGenerateReport
 }) {
   const [isScanning, setIsScanning] = useState(false);
@@ -31,7 +30,6 @@ export default function GenerateReportSection({
           clearInterval(interval);
           setTimeout(() => {
             setIsScanning(false);
-            // Trigger confetti for report generation completion!
             try {
               confetti({
                 particleCount: 60,
@@ -39,8 +37,8 @@ export default function GenerateReportSection({
                 origin: { y: 0.6 },
                 colors: ['#a855f7', '#6366f1', '#38bdf8', '#34d399']
               });
-            } catch (err) {
-              // fallback gracefully if confetti not loaded
+            } catch {
+              // fallback gracefully if confetti not available
             }
             onGenerateReport();
           }, 600);

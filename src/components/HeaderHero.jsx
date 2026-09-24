@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, CheckCircle2, CircleDashed, FileSpreadsheet, Receipt, HelpCircle } from 'lucide-react';
+import { Search, CheckCircle2, CircleDashed } from 'lucide-react';
 
 export default function HeaderHero({ hasCsv, billCount, hasProfile }) {
   // Determine dynamic forensic confidence level
@@ -8,16 +8,16 @@ export default function HeaderHero({ hasCsv, billCount, hasProfile }) {
 
   if (hasCsv && billCount > 0) {
     confidenceScore = 98;
-    statusText = 'Dual Evidence Audit (Maximum Accuracy)';
+    statusText = 'Dual Evidence Audit';
   } else if (hasCsv) {
     confidenceScore = 75;
-    statusText = 'Bank Ledger Reconciled (No receipt cross-check)';
+    statusText = 'Bank Ledger Reconciled';
   } else if (billCount > 0) {
     confidenceScore = 65;
-    statusText = 'Physical Invoices Linked (No bank ledger)';
+    statusText = 'Physical Invoices Linked';
   } else if (hasProfile) {
     confidenceScore = 35;
-    statusText = 'Target & Income Baseline Mode';
+    statusText = 'Baseline Profile Mode';
   }
 
   return (
@@ -59,6 +59,7 @@ export default function HeaderHero({ hasCsv, billCount, hasProfile }) {
 
         <div className="evidence-confidence">
           Evidence Level: <span style={{ color: confidenceScore > 70 ? '#34d399' : '#c084fc' }}>{confidenceScore}%</span>
+          <span style={{ marginLeft: '8px', fontSize: '0.72rem', color: 'var(--text-muted)' }}>({statusText})</span>
         </div>
       </div>
     </section>
