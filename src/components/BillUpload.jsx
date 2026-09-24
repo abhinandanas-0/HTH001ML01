@@ -1,9 +1,11 @@
 import React, { useRef, useState } from 'react';
-import { Receipt, Upload, Trash2, FileText, Image as ImageIcon, CheckCircle2, Plus } from 'lucide-react';
+import { Receipt, Upload, Trash2, FileText, Image as ImageIcon, CheckCircle2, Plus, Loader2, AlertCircle } from 'lucide-react';
+import { extractBillDocument } from '../analytics/billExtraction.js';
 
 export default function BillUpload({
   bills,
   onAddBills,
+  onUpdateBill,
   onRemoveBill,
   onClearBills
 }) {
@@ -53,13 +55,52 @@ export default function BillUpload({
           type: isImage ? 'image' : 'pdf',
           previewUrl,
           rawFile: file,
-          status: 'Staged Document'
+          status: 'Extracting bill details...',
+          isExtracting: true,
+          hasExtractedData: false,
+          extraction: null
         });
       }
     });
 
     if (newItems.length > 0) {
       onAddBills(newItems);
+
+      // Asynchronously extract bill fields without blocking UI
+      newItems.forEach(async (item) => {
+        try {
+          const extraction = await extractBillDocument(item.rawFile);
+          if (extraction && extraction.success) {
+            onUpdateBill?.(item.id, {
+              isExtracting: false,
+              status: 'Bill details extracted',
+              hasExtractedData: true,
+              extraction
+            });
+          } else {
+            onUpdateBill?.(item.id, {
+              isExtracting: false,
+              status: 'Could not extract bill details',
+              hasExtractedData: false,
+              extraction
+            });
+          }
+        } catch (err) {
+          onUpdateBill?.(item.id, {
+            isExtracting: false,
+            status: 'Could not extract bill details',
+            hasExtractedData: false,
+            extraction: {
+              success: false,
+              extractionMethod: 'none',
+              extractedText: '',
+              fields: { provider: null, billDate: null, dueDate: null, amountDue: null, currency: null, category: null, status: null },
+              confidence: { provider: 'not_found', billDate: 'not_found', dueDate: 'not_found', amountDue: 'not_found', currency: 'not_found', category: 'not_found', status: 'not_found' },
+              warnings: [err.message || 'Unknown extraction failure']
+            }
+          });
+        }
+      });
     }
   };
 
@@ -166,12 +207,40 @@ export default function BillUpload({
                     <div className="bill-name" title={bill.name}>
                       {bill.name}
                     </div>
-                    <div className="bill-meta">
+                    <div className="bill-meta" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
                       <span>{bill.size}</span>
                       <span>•</span>
                       <span style={{ color: 'var(--text-muted)' }}>
                         {bill.type ? bill.type.toUpperCase() : 'DOCUMENT'}
                       </span>
+                      {bill.isExtracting && (
+                        <>
+                          <span>•</span>
+                          <span style={{ color: 'var(--cyan-400)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <Loader2 size={12} className="spin-animate" /> Extracting bill details...
+                          </span>
+                        </>
+                      )}
+                      {!bill.isExtracting && bill.extraction?.success && (
+                        <>
+                          <span>•</span>
+                          <span style={{ color: 'var(--emerald-400)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <CheckCircle2 size={12} />
+                            {bill.extraction.fields.provider || 'Bill extracted'}
+                            {bill.extraction.fields.amountDue !== null && bill.extraction.fields.amountDue !== undefined
+                              ? ` (${bill.extraction.fields.currency === 'INR' ? '₹' : (bill.extraction.fields.currency || '')}${Number(bill.extraction.fields.amountDue).toLocaleString()})`
+                              : ''}
+                          </span>
+                        </>
+                      )}
+                      {!bill.isExtracting && bill.extraction && !bill.extraction.success && (
+                        <>
+                          <span>•</span>
+                          <span style={{ color: 'var(--amber-400)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <AlertCircle size={12} /> Staged (Details not detected)
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

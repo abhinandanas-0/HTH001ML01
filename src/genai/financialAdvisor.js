@@ -33,6 +33,18 @@ function generateRecommendation(evidenceItem) {
 
         explanation = `Unusual transaction of ${amount} detected in ${category}${txRef}.${reason}${confidence}`;
         recommendation = `Verify transaction${txRec} against your merchant receipts to confirm validity and ensure no unauthorized charges occurred.`;
+    } else if (findingType === 'bill_evidence') {
+        const provider = finding.provider || 'Bill document';
+        const currSym = finding.currency === 'INR' ? '₹' : (finding.currency || '$');
+        const amtText = (finding.amountDue !== null && finding.amountDue !== undefined)
+            ? `${currSym}${Number(finding.amountDue).toLocaleString()}`
+            : 'an unspecified amount';
+        const dueText = finding.dueDate ? ` due by ${finding.dueDate}` : '';
+        const billStatus = finding.status ? ` (${finding.status})` : '';
+        const methodText = finding.extractionMethod === 'ocr' ? 'OCR' : 'PDF text extraction';
+
+        explanation = `Uploaded document "${finding.documentName || 'invoice'}" indicates an amount due of ${amtText} for ${provider}${dueText}${billStatus}. (Verified via ${methodText}).`;
+        recommendation = `Ensure payment for ${provider} (${amtText}) is scheduled by ${finding.dueDate || 'the due date'} to avoid late penalties, and reconcile with bank debits once cleared.`;
     } else {
         const category = finding.category ? ` in ${finding.category}` : '';
         const txRef = transactionIds.length > 0 ? `: ${transactionIds.join(', ')}` : '';

@@ -63,7 +63,22 @@ export function buildEvidenceFromAnalytics(analytics, transactions = []) {
             id: f.id || (f.transactionId ? `ANOM-${f.transactionId}` : undefined),
             type: f.type || 'unusual_spending',
             ...f
-        }))
+        })),
+        ...(analytics?.billEvidence?.items || [])
+            .filter((b) => b?.extraction?.success && (b.extraction?.fields?.amountDue !== null || b.extraction?.fields?.provider))
+            .map((b, idx) => ({
+                id: b.id ? `BILL-${b.id}` : `BILL-DOC-${idx + 1}`,
+                type: 'bill_evidence',
+                provider: b.extraction.fields.provider || b.name,
+                amountDue: b.extraction.fields.amountDue,
+                currency: b.extraction.fields.currency,
+                dueDate: b.extraction.fields.dueDate,
+                billDate: b.extraction.fields.billDate,
+                category: b.extraction.fields.category || 'Utilities',
+                status: b.extraction.fields.status || 'Unpaid',
+                extractionMethod: b.extraction.method || b.extraction.extractionMethod || 'pdf-text',
+                documentName: b.name
+            }))
     ];
 
     return findings.map((finding) =>

@@ -101,3 +101,10 @@ export {
 export {
   runAnalytics
 } from './runAnalytics.js';
+
+export {
+  extractBillDocument,
+  parseBillFieldsFromText,
+  normalizeBillDate,
+  normalizeBillAmount
+} from './billExtraction.js';

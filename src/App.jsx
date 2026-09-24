@@ -48,6 +48,11 @@ export default function App() {
     setAnalyticsError(null);
   };
 
+  // Update bill item with extraction results
+  const handleUpdateBill = (id, updates) => {
+    setBills((prev) => prev.map((b) => (b.id === id ? { ...b, ...updates } : b)));
+  };
+
   // Remove individual bill
   const handleRemoveBill = (id) => {
     setBills((prev) => prev.filter((b) => b.id !== id));
@@ -149,6 +154,7 @@ export default function App() {
           <BillUpload
             bills={bills}
             onAddBills={handleAddBills}
+            onUpdateBill={handleUpdateBill}
             onRemoveBill={handleRemoveBill}
             onClearBills={handleClearBills}
           />

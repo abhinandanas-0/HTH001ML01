@@ -111,7 +111,8 @@ export function runAnalytics(inputs = {}) {
         size: b.size || 'N/A',
         type: b.type || 'document',
         status: b.status || 'Staged Document',
-        hasExtractedData: Boolean(b.extractedData)
+        hasExtractedData: Boolean(b.extraction?.success || b.extractedData),
+        extraction: b.extraction || null
       }))
       : [],
     note: hasBills

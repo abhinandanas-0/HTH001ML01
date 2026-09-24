@@ -8,6 +8,12 @@ export function buildFinancialPrompt(finding, evidence = []) {
     if (finding?.changePercentage !== undefined) details.push(`- Change Percentage: ${finding.changePercentage}%`);
     if (finding?.reason) details.push(`- Reason: ${finding.reason}`);
     if (finding?.confidence) details.push(`- Confidence: ${finding.confidence}`);
+    if (finding?.provider) details.push(`- Provider: ${finding.provider}`);
+    if (finding?.amountDue !== undefined && finding?.amountDue !== null) details.push(`- Amount Due: ${finding.amountDue}`);
+    if (finding?.dueDate) details.push(`- Due Date: ${finding.dueDate}`);
+    if (finding?.billDate) details.push(`- Bill Date: ${finding.billDate}`);
+    if (finding?.status) details.push(`- Status: ${finding.status}`);
+    if (finding?.extractionMethod) details.push(`- Extraction Method: ${finding.extractionMethod}`);
 
     const detailsBlock = details.length > 0 ? `\nExtracted Finding Details:\n${details.join('\n')}\n` : '';
 

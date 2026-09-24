@@ -667,9 +667,9 @@ export default function ReportModal({
           </div>
         )}
 
-        {/* SECTION 6: Staged Document Proofs */}
+        {/* SECTION 6: Staged Document Proofs & Extracted Details */}
         {billCount > 0 && (
-          <div style={{ marginBottom: '20px' }}>
+          <div style={{ marginBottom: '24px' }}>
             <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: '#fff', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <FileText size={17} style={{ color: 'var(--cyan-400)' }} />
               <span>Attached Physical Document Proofs ({billCount})</span>
@@ -694,8 +694,8 @@ export default function ReportModal({
                       </td>
                       <td className="font-mono" style={{ color: 'var(--text-dim)' }}>{bill.size}</td>
                       <td>
-                        <span style={{ color: 'var(--emerald-400)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <CheckCircle2 size={13} /> {bill.status || 'Staged Document'}
+                        <span style={{ color: bill.hasExtractedData ? 'var(--emerald-400)' : 'var(--cyan-400)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <CheckCircle2 size={13} /> {bill.status || (bill.hasExtractedData ? 'Bill details extracted' : 'Staged Document')}
                         </span>
                       </td>
                     </tr>
@@ -703,6 +703,156 @@ export default function ReportModal({
                 </tbody>
               </table>
             </div>
+
+            {/* Extracted Bill Details Cards */}
+            {billEvidence.items.some((bill) => bill.extraction) && (
+              <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {billEvidence.items.map((bill) => {
+                  if (!bill.extraction) return null;
+                  if (!bill.extraction.success) {
+                    return (
+                      <div
+                        key={`extracted-${bill.id}`}
+                        style={{
+                          padding: '12px 16px',
+                          borderRadius: '8px',
+                          background: 'rgba(239, 68, 68, 0.08)',
+                          border: '1px solid rgba(239, 68, 68, 0.2)',
+                          fontSize: '0.82rem',
+                          color: 'var(--rose-300)'
+                        }}
+                      >
+                        <strong>{bill.name}:</strong> Document uploaded, but bill details could not be extracted.
+                      </div>
+                    );
+                  }
+
+                  const fields = bill.extraction.fields || {};
+                  const methodLabel = bill.extraction.method === 'pdf-text'
+                    ? 'PDF Text'
+                    : bill.extraction.method === 'ocr'
+                    ? 'OCR'
+                    : (bill.extraction.method || 'Document Extraction');
+                  const currSymbol = fields.currency === 'INR' ? '₹' : (fields.currency === 'USD' ? '$' : (fields.currency || currencySymbol));
+
+                  return (
+                    <div
+                      key={`extracted-${bill.id}`}
+                      className="glass-panel"
+                      style={{
+                        padding: '16px',
+                        borderRadius: '10px',
+                        background: 'rgba(15, 23, 42, 0.6)',
+                        border: '1px solid rgba(56, 189, 248, 0.25)'
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginBottom: '12px',
+                          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                          paddingBottom: '8px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#fff' }}>
+                            {fields.provider || bill.name}
+                          </span>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                            ({bill.name})
+                          </span>
+                        </div>
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            background: 'rgba(56, 189, 248, 0.15)',
+                            color: 'var(--cyan-300)',
+                            fontWeight: 600
+                          }}
+                        >
+                          Extraction: {methodLabel}
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                          gap: '12px',
+                          fontSize: '0.82rem'
+                        }}
+                      >
+                        <div>
+                          <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem', marginBottom: '2px' }}>
+                            Provider
+                          </span>
+                          <span style={{ fontWeight: 600, color: '#fff' }}>
+                            {fields.provider || 'Not detected'}
+                          </span>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem', marginBottom: '2px' }}>
+                            Amount Due
+                          </span>
+                          <span
+                            style={{
+                              fontWeight: 700,
+                              fontSize: '0.92rem',
+                              color: fields.amountDue !== null && fields.amountDue !== undefined ? 'var(--cyan-400)' : 'var(--text-muted)'
+                            }}
+                          >
+                            {fields.amountDue !== null && fields.amountDue !== undefined
+                              ? `${currSymbol}${Number(fields.amountDue).toLocaleString()}`
+                              : 'Not detected'}
+                          </span>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem', marginBottom: '2px' }}>
+                            Bill Date
+                          </span>
+                          <span style={{ color: '#fff' }}>
+                            {fields.billDate || 'Not detected'}
+                          </span>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem', marginBottom: '2px' }}>
+                            Due Date
+                          </span>
+                          <span style={{ color: '#fff' }}>
+                            {fields.dueDate || 'Not detected'}
+                          </span>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem', marginBottom: '2px' }}>
+                            Category
+                          </span>
+                          <span style={{ color: '#fff' }}>
+                            {fields.category || 'Not detected'}
+                          </span>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem', marginBottom: '2px' }}>
+                            Status
+                          </span>
+                          <span
+                            style={{
+                              fontWeight: 600,
+                              color: fields.status === 'Paid' ? 'var(--emerald-400)' : 'var(--amber-400)'
+                            }}
+                          >
+                            {fields.status || 'Not detected'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
